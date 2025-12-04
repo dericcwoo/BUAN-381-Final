@@ -7,7 +7,7 @@
 library(dplyr)
 
 # LOAD DATASET
-qb <- read.csv('/Users/dwoo/Downloads/Fall 2025/BUAN-381/qb_index_no_tier.csv')
+qb <- read.csv('https://raw.githubusercontent.com/dericcwoo/BUAN-381-Final/refs/heads/main/qb_index_no_tier.csv')
 
 # --------------------------------------------
 # CLEAN THE DATA — remove QBs with zero NFL attempts
@@ -81,7 +81,7 @@ if (!require(corrplot)) {
 # Select variables from cleaned dataset qb1
 num_vars <- qb1 %>%
   select(nfl.qbr, cmp.pct, p.yds, p.td, p.ypa, rate, conf.str, coach.tenure, 
-         drafted.team.winpr, drafted_team_ppg_rk) %>%
+         drafted.team.winpr, drafted_team_ppg_rk, qb.num.picked) %>%
   na.omit()
 
 cor_matrix <- cor(num_vars)
@@ -239,9 +239,9 @@ lasso_valid_rmse <- rmse(validation$nfl.qbr, valid_pred_lasso)
 
 lasso_train_rmse; lasso_valid_rmse
 
-##############################################
+# --------------------------------------------
 # TASK 4D — GLM (Gaussian / Identity Link)
-##############################################
+# --------------------------------------------
 
 # Fit the GLM model
 model_4d <- glm(nfl.qbr ~ qb.num.picked,
@@ -250,16 +250,16 @@ model_4d <- glm(nfl.qbr ~ qb.num.picked,
 
 summary(model_4d)
 
-##############################################
+# --------------------------------------------
 # Predictions
-##############################################
+# --------------------------------------------
 
 train_pred_4d <- predict(model_4d, newdata = train, type = "response")
 valid_pred_4d <- predict(model_4d, newdata = validation, type = "response")
 
-##############################################
+# --------------------------------------------
 # Error Metrics
-##############################################
+# --------------------------------------------
 
 rmse <- function(a, p) sqrt(mean((a - p)^2))
 mae  <- function(a, p) mean(abs(a - p))
@@ -273,9 +273,9 @@ valid_mae_4d  <- mae(validation$nfl.qbr, valid_pred_4d)
 train_rmse_4d; train_mae_4d
 valid_rmse_4d; valid_mae_4d
 
-##############################################
+# --------------------------------------------
 # Plot (Same Scatterplot with GLM Fit)
-##############################################
+# --------------------------------------------
 
 library(ggplot2)
 
@@ -346,5 +346,54 @@ ggplot(qbr_top25, aes(x = reorder(college, total_qbr), y = total_qbr)) +
        x = "College Team",
        y = "Sum of NFL QBR") +
   theme_minimal(base_size = 14)
+
+##############################################
+# TASK 4E — SVM Regression
+##############################################
+
+install.packages("e1071")
+library(e1071)
+
+# Fit SVM model (epsilon-regression, default kernel = radial)
+svm_4e <- svm(
+  nfl.qbr ~ qb.num.picked,
+  data = train,
+  type = "eps-regression",
+  kernel = "radial",
+  cost = 1
+)
+
+summary(svm_4e)
+
+# Predictions
+train_pred_4e <- predict(svm_4e, newdata = train)
+valid_pred_4e <- predict(svm_4e, newdata = validation)
+
+# Error metrics
+rmse <- function(a, p) sqrt(mean((a - p)^2))
+mae  <- function(a, p) mean(abs(a - p))
+
+train_rmse_4e <- rmse(train$nfl.qbr, train_pred_4e)
+train_mae_4e  <- mae(train$nfl.qbr, train_pred_4e)
+
+valid_rmse_4e <- rmse(validation$nfl.qbr, valid_pred_4e)
+valid_mae_4e  <- mae(validation$nfl.qbr, valid_pred_4e)
+
+train_rmse_4e; train_mae_4e
+valid_rmse_4e; valid_mae_4e
+
+# Plot SVM fit
+library(ggplot2)
+
+ggplot(train, aes(x = qb.num.picked, y = nfl.qbr)) +
+  geom_point(alpha = 0.6, color = "purple") +
+  geom_line(aes(y = train_pred_4e), color = "black", linewidth = 1.2) +
+  labs(
+    title = "SVM Regression Fit: NFL QBR ~ Draft Pick Number",
+    x = "QB Draft Pick Number",
+    y = "NFL QBR"
+  ) +
+  theme_minimal(base_size = 14)
+
 
 
